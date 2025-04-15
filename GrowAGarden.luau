@@ -1,4 +1,4 @@
--- Will not be recieving updates so it is now open source
+-- Will not be receiving updates so it is now open source
 local player = game.Players.LocalPlayer
 local screenGui = Instance.new("ScreenGui")
 screenGui.Parent = player:WaitForChild("PlayerGui")
@@ -160,14 +160,13 @@ closeHolder.Parent = frame
 closeButton.Position = UDim2.new(0, 0, 0, 0)
 closeButton.Parent = closeHolder
 
--- Script logic for Auto Collect Crops with repeated tweening and prompt firing
+-- Script logic for Auto Collect Crops
 local TweenService = game:GetService("TweenService")
 local hrp = player.Character:WaitForChild("HumanoidRootPart")
 local scriptEnabled = false
 local efficiencyMode = false
 local radius = 15
 
--- Reference to spawn point and target positions for tweening
 local referenceSpawnPosition = Vector3.new(8.171, 5.105, -64.527)
 local targetWorldPositions = {
 	Vector3.new(34.54681, 3.110025, -84.12538),
@@ -180,7 +179,6 @@ for _, worldPos in ipairs(targetWorldPositions) do
 	table.insert(relativeOffsets, worldPos - referenceSpawnPosition)
 end
 
--- Function to tween the player to the target position
 local function tweenToPosition(position)
 	local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
 	local tween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(position)})
@@ -188,7 +186,6 @@ local function tweenToPosition(position)
 	tween.Completed:Wait()
 end
 
--- Auto Collect Crops logic with repeated tweening and prompt firing
 toggleButton.MouseButton1Click:Connect(function()
 	playClick()
 	scriptEnabled = not scriptEnabled
@@ -197,7 +194,6 @@ toggleButton.MouseButton1Click:Connect(function()
 		toggleButton.BackgroundColor3 = Color3.fromRGB(0, 180, 100)
 		task.spawn(function()
 			while scriptEnabled do
-				-- Fire proximity prompts
 				local nearbyPrompts = {}
 				for _, prompt in pairs(workspace:GetDescendants()) do
 					if prompt:IsA("ProximityPrompt") and prompt.Enabled then
@@ -208,23 +204,19 @@ toggleButton.MouseButton1Click:Connect(function()
 					end
 				end
 
-				if #nearbyPrompts > 0 then
-					for _, prompt in pairs(nearbyPrompts) do
-						pcall(function()
-							prompt.RequiresLineOfSight = false
-							prompt.MaxActivationDistance = math.huge
-							fireproximityprompt(prompt)
-						end)
-					end
+				for _, prompt in pairs(nearbyPrompts) do
+					pcall(function()
+						prompt.RequiresLineOfSight = false
+						prompt.MaxActivationDistance = math.huge
+						fireproximityprompt(prompt)
+					end)
 				end
 
-				-- Move to each of the 4 target positions repeatedly
 				local spawnPoint = workspace:WaitForChild("Farm"):FindFirstChild("Spawn_Point")
 				if spawnPoint then
 					local currentSpawnPos = spawnPoint.Position
 					for _, offset in ipairs(relativeOffsets) do
-						local targetPos = currentSpawnPos + offset
-						tweenToPosition(targetPos)
+						tweenToPosition(currentSpawnPos + offset)
 					end
 				end
 
@@ -237,7 +229,6 @@ toggleButton.MouseButton1Click:Connect(function()
 	end
 end)
 
--- Efficiency Toggle
 efficiencyToggle.MouseButton1Click:Connect(function()
 	playClick()
 	efficiencyMode = not efficiencyMode
@@ -245,7 +236,47 @@ efficiencyToggle.MouseButton1Click:Connect(function()
 	efficiencyToggle.BackgroundColor3 = efficiencyMode and Color3.fromRGB(0, 180, 255) or Color3.fromRGB(100, 100, 255)
 end)
 
--- Close Button functionality
+-- Close GUI
 closeButton.MouseButton1Click:Connect(function()
 	screenGui:Destroy()
+end)
+
+-- Auto Buy Seeds
+local autoBuySeeds = false
+autoBuySeedsBtn.MouseButton1Click:Connect(function()
+	playClick()
+	autoBuySeeds = not autoBuySeeds
+	autoBuySeedsBtn.Text = autoBuySeeds and "Stop Auto Buy Seeds" or "Start Auto Buy Seeds"
+	while autoBuySeeds do
+		local seeds = string.split(seedBox.Text, ",")
+		for _, seed in pairs(seeds) do
+			seed = seed:match("^%s*(.-)%s*$") -- Trim whitespace
+			if seed ~= "" then
+				pcall(function()
+					game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("BuySeedStock"):FireServer(seed)
+				end)
+			end
+		end
+		task.wait(2)
+	end
+end)
+
+-- Auto Buy Gears
+local autoBuyGears = false
+autoBuyGearsBtn.MouseButton1Click:Connect(function()
+	playClick()
+	autoBuyGears = not autoBuyGears
+	autoBuyGearsBtn.Text = autoBuyGears and "Stop Auto Buy Gears" or "Start Auto Buy Gears"
+	while autoBuyGears do
+		local gears = string.split(gearBox.Text, ",")
+		for _, gear in pairs(gears) do
+			gear = gear:match("^%s*(.-)%s*$")
+			if gear ~= "" then
+				pcall(function()
+					game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("BuyGearStock"):FireServer(gear, 10)
+				end)
+			end
+		end
+		task.wait(2)
+	end
 end)
